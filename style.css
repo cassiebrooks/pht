@@ -1,0 +1,28 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  padding: 0;
+  margin: 0;
+  height: 100vh;
+  width: 100vw;
+}
+
+#map {
+  width: 100%;
+  height: 80%;
+  transform: rotate(180deg) scaleX(-1);
+  transform-origin: 50% 50%;
+}
+
+#map path {
+  stroke-width: 1;
+  stroke: black;
+  fill: none;
+}
+
+#map circle {
+  fill: red;
+  stroke: none;
+}
