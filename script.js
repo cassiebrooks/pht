@@ -80,6 +80,7 @@ const distanceBetweenCoords = (co1, co2) => Math.sqrt((Math.pow(co2[0] - co1[0],
 
 const errors = [];
 
+// bracket distances into blocks?
 const algo = (streets, photos) => {
   let proximities, midpoint;
   return streets.map(street => {
@@ -103,7 +104,7 @@ const svg = d3
 d3.csv('./gps.csv').then(data => {
   d3.json('./arrondissements.json').then(arrondissements => {
     const points = data.map(d => [parseDms(d.GPSLongitude), parseDms(d.GPSLatitude)]).filter(d => d && d[0] && d[1]);
-    const pointsInParis = points.filter(d =>  arrondissements.some(a => d3.polygonContains(a.coordinates, d)));
+    const pointsInParis = points.filter(d =>  arrondissements.some(a => d3.polygonContains(a.coordinates, d)) && !d3.polygonContains(boisDeBoulogne, d) && !d3.polygonContains(boisDeVincennes, d));
 
     d3.json('./troncon_voie.json').then(voies => {
       let streets = [];
@@ -129,7 +130,8 @@ d3.csv('./gps.csv').then(data => {
       console.log(d3.max(scoreExtent), d3.min(scoreExtent));
       console.log(errors);
 
-      const scaleValue = d3.scaleLinear().domain(scoreExtent).range([0, 1]);
+      const scaleValue = d3.scaleLog().base(Math.E).domain(scoreExtent).range([0, 1]);
+
       const scaledScores = streetScores.map(scaleValue);
       console.log(scaledScores.reduce((a, b) => a + b, 0) / scaledScores.length);
 
