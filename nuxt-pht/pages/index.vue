@@ -1,3 +1,16 @@
+<template>
+  <div id='map'></div>
+</template>
+
+<script>
+import * as d3 from 'd3';
+// import polylabel from 'polylabel';
+
+export default {
+}
+</script>
+
+<style>
 * {
   box-sizing: border-box;
 }
@@ -26,3 +39,5 @@ body {
   fill: red;
   stroke: none;
 }
+
+</style>
