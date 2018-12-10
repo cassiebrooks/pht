@@ -97,10 +97,23 @@ export default {
     // bracket distances into blocks?
     const algo = (streets, photos) => {
       let proximities, midpoint;
-      const condition1 = x => x < 0.03;
-      const condition2 = x => x < 0.04;
-      const condition3 = x => x < 0.07;
-      const condition4 = x => x < 0.1;
+      const condition1 = x => x < 0.02;
+      const condition2 = x => x < 0.025;
+      const condition3 = x => x < 0.03;
+      const condition4 = x => x < 0.035;
+      const condition5 = x => x < 0.04;
+      const condition6 = x => x < 0.045;
+      const condition7 = x => x < 0.05;
+      const condition8 = x => x < 0.055;
+      const condition9 = x => x < 0.06;
+      const condition10 = x => x < 0.065;
+      const condition11 = x => x < 0.07;
+      const condition12 = x => x < 0.075;
+      const condition13 = x => x < 0.08;
+      const condition14 = x => x < 0.085;
+      const condition15 = x => x < 0.09;
+      const condition16= x => x < 0.095;
+      const condition17 = x => x < 0.1;
       return streets
         .map((street, streetIndex) => {
           midpoint = polylabel([street], 1.0);
@@ -115,15 +128,28 @@ export default {
             const lower = proximities.filter(condition2);
             const lowish = proximities.filter(condition3);
             const low = proximities.filter(condition4);
-            console.log(lowest.length, lower.length, lowish.length, low.length, proximities.length);
+            // console.log(lowest.length, lower.length, lowish.length, low.length, proximities.length);
           }
 
           const value = mean;
 
           if (condition1(value)) return 1;
-          else if (condition2(value)) return 0.75;
-          else if (condition3(value)) return 0.5;
-          else if (condition4(value)) return 0.25;
+          else if (condition2(value)) return 0.95;
+          else if (condition3(value)) return 0.9;
+          else if (condition4(value)) return 0.85;
+          else if (condition5(value)) return 0.75;
+          else if (condition6(value)) return 0.7;
+          else if (condition7(value)) return 0.65;
+          else if (condition8(value)) return 0.6;
+          else if (condition9(value)) return 0.55;
+          else if (condition10(value)) return 0.5;
+          else if (condition11(value)) return 0.4;
+          else if (condition12(value)) return 0.35;
+          else if (condition13(value)) return 0.3;
+          else if (condition14(value)) return 0.25;
+          else if (condition15(value)) return 0.2;
+          else if (condition16(value)) return 0.15;
+          else if (condition17(value)) return 0.1;
           return 0;
 
           // console.log(d3.min(proximities));
@@ -180,8 +206,6 @@ export default {
 
           const streetScores = algo(streets, pointsInParis);
           const scoreExtent = d3.extent(streetScores);
-          console.log(d3.max(scoreExtent), d3.min(scoreExtent));
-          console.log(errors);
 
           // const scaleValue = d3
           //   .scaleLog()
@@ -209,7 +233,10 @@ export default {
             .x(d => x(d[0]))
             .y(d => y(d[1]));
 
-          let multiplier;
+          console.log(d3.min(streetScores), d3.max(streetScores), d3.mean(streetScores));
+
+          let posOrNeg;
+          let variation;
           const streetsOnMap = svg
             .selectAll(".street")
             .data(streets)
@@ -218,8 +245,12 @@ export default {
             .attr("class", "street")
             .attr("d", line)
             .style("opacity", (d, i) => {
-              multiplier = Math.random() >= 0.5 ? 1 : -1;
-              return streetScores[i] + (multiplier * Math.random() / 4);
+              if (streetScores[i])
+              posOrNeg = Math.random() >= 0.5 ? 1 : -1;
+              variation = (posOrNeg * Math.random() * 0.6);
+              if (streetScores[i] > 0.7) variation = variation * 2;
+              if (streetScores[i] < 0.3) variation = variation / 2;
+              return (streetScores[i] + variation > 1) ? 1 : 0;
             });
 
           // const circles = svg
