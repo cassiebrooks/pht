@@ -3,10 +3,56 @@
 </template>
 
 <script>
+/*
+convert streets to graph:
+- get intersections of street tronçons
+- intersections become nodes
+- each street (edge) has a weight
+
+
+// FIRST PASS: get nodes
+const nodes = [];
+
+let line = Shapes.line(0, -10, 110, 110);
+
+for s1 in array:
+  for s2 in array:
+    if (intersection(s1, s2)):
+      nodes.push(new Point({
+        id,
+        position: [x, y],
+        edges: [
+          [1, 2], [3, 4],
+          [5, 6], [7, 8],
+        ]
+      }));
+
+
+// SECOND PASS: link edges to nodes
+
+const edges = [];
+
+nodes.forEach(n => {
+  n.edges.forEach(n => {
+    edges.push(new Edge({
+      id,
+      source: n.id,
+      target: nodes.find(n2 => n2.)
+    }))
+  });
+});
+*/
+
 /* eslint-disable */
 
 import * as d3 from "d3";
 import polylabel from "polylabel";
+// import intersect from 'path-intersection';
+
+let lib          = require('kld-intersections'),
+    Point2D      = lib.Point2D,
+    Intersection = lib.Intersection,
+    Shapes       = lib.Shapes;
 
 export default {
   name: "app",
@@ -203,21 +249,11 @@ export default {
 
           const xValuesExtent = d3.extent(flatStreets.map(s => s[0]));
           const yValuesExtent = d3.extent(flatStreets.map(s => s[1]));
-
+          
           const streetScores = algo(streets, pointsInParis);
           const scoreExtent = d3.extent(streetScores);
 
-          // const scaleValue = d3
-          //   .scaleLog()
-          //   .base(Math.E)
-          //   .domain(scoreExtent)
-          //   .range([0, 1]);
-
-          // const scaledScores = streetScores.map(scaleValue);
-          // console.log(
-          //   scaledScores.reduce((a, b) => a + b, 0) / scaledScores.length
-          // );
-
+          // D3 ACTUAL SCALES
           const x = d3
             .scaleLinear()
             .domain(xValuesExtent)
@@ -233,10 +269,88 @@ export default {
             .x(d => x(d[0]))
             .y(d => y(d[1]));
 
-          console.log(d3.min(streetScores), d3.max(streetScores), d3.mean(streetScores));
+          
+          const streetLines = streets.map(s => ({ coords: s, poly: s.map(co => new Point2D(...co)) }));
 
-          let posOrNeg;
-          let variation;
+
+          // BUILD BASIC NODE ARRAY
+          let result;
+          const nodes = [];
+          streetLines.slice(0, 1000).forEach((s1, s1i) => {
+            streetLines.slice(0, 1000).forEach((s2, s2i) => {
+              if (s1i !== s2i) {
+                result = Intersection.intersectPolylinePolyline(s1.poly, s2.poly);
+                if (result.points.length) {
+                  result.points.forEach(t => {
+                    nodes.push({
+                      x: t.x,
+                      y: t.y,
+                      edges: [
+                        { id: s1i, score: streetScores[s1i], travelled: false },
+                        { id: s2i, score: streetScores[s2i], travelled: false },
+                      ],
+                    });
+                  });
+                }
+              }
+            });
+          });
+
+          // ADD NODE IDS
+          nodes.forEach((n, nIndex) => { n.id = nIndex; });
+
+
+          // NORMALIZE NODES
+          // merge nodes with same x/y => concat edges
+          // dedupe nodeIds ('0-121' / '121-0')
+
+
+          // HYDRATE COMPLETE GRAPH
+          const graph = nodes.map((n, nIndex) => ({
+            ...n,
+            id: nIndex,
+            edges: n.edges.map(e => ({
+              ...e,
+              nodeIds: nodes.filter(fn => fn.edges.some(fe => fe.id === e.id)).map(fn => fn.id),
+            })),
+          }));
+
+          // @TODO improve
+          const decideToTravel = edge => true; // edge.score > 0.5;
+
+
+          const drawEdge = edge => {
+            if (graph[edge.nodeIds[0]].x !== graph[edge.nodeIds[1]].x) {
+              debugger;
+            }
+            svg.append('line')
+              .attr('x1', x(graph[edge.nodeIds[0]].x))
+              .attr('y1', y(graph[edge.nodeIds[0]].y))
+              .attr('x2', x(graph[edge.nodeIds[1]].x))
+              .attr('y2', y(graph[edge.nodeIds[1]].y))
+              .attr('stroke', 'black')
+              .attr('stroke-width', '20px');
+          };
+
+          const splitPath = node => {
+            console.log(`In splitPath for node ID ${node.id}`);
+            node.edges.forEach(e => {
+              if (!e.travelled) {
+                if (decideToTravel(e)) {
+                  window.setTimeout(() => {
+                    drawEdge(e);
+                    const nodesExceptPresent = e.nodeIds.filter(id => id !== node.id);
+                    const foundNodes = nodesExceptPresent.map(id => graph.find(gn => gn.id === id));
+                    foundNodes.forEach(splitPath);
+                  }, 500);
+                }
+                e.travelled = true;
+              }
+            });
+          };
+
+          // @TODO starter nodes
+
           const streetsOnMap = svg
             .selectAll(".street")
             .data(streets)
@@ -244,23 +358,31 @@ export default {
             .append("path")
             .attr("class", "street")
             .attr("d", line)
-            .style("opacity", (d, i) => {
-              if (streetScores[i])
-              posOrNeg = Math.random() >= 0.5 ? 1 : -1;
-              variation = (posOrNeg * Math.random() * 0.6);
-              if (streetScores[i] > 0.7) variation = variation * 2;
-              if (streetScores[i] < 0.3) variation = variation / 2;
-              return (streetScores[i] + variation > 1) ? 1 : 0;
-            });
+            .style("opacity", "0.05");
+
+          // START DRAWING!
+          const starterNodes = [graph[5], graph[9], graph[19], graph[29], graph[39], graph[49]];
+
+          const circles = svg
+            .selectAll("circle")
+            .data(starterNodes)
+            .enter()
+            .append("circle")
+            .attr("r", 2)
+            .attr("cx", d => x(d.x))
+            .attr("cy", d => y(d.y))
+            .attr("fill", "red");
+
+          starterNodes.forEach(starter => splitPath(starter));
 
           // const circles = svg
           //   .selectAll("circle")
-          //   .data(pointsInParis)
+          //   .data(nodes)
           //   .enter()
           //   .append("circle")
           //   .attr("r", 2)
-          //   .attr("cx", d => x(d[0]))
-          //   .attr("cy", d => y(d[1]))
+          //   .attr("cx", d => x(d.x))
+          //   .attr("cy", d => y(d.y))
           //   .attr("fill", "red");
         });
       });
